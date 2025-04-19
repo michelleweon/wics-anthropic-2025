@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>MouseMap - Harvard Sightings</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <style>
+      #map {
+        height: 100vh;
+        width: 100%;
+        border-radius: 20px;
+        margin: 10px;
+      }
+
+      /* Make the popup more cute */
+      .leaflet-popup-content-wrapper {
+        border-radius: 15px;
+        background-color: #fff8f8;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      }
+
+      .leaflet-popup-content {
+        font-family: "Comic Sans MS", cursive;
+        font-size: 14px;
+        color: #ff69b4;
+      }
+
+      /* Customize zoom controls */
+      .leaflet-control-zoom {
+        border-radius: 15px !important;
+        overflow: hidden;
+      }
+
+      .leaflet-control-zoom a {
+        background-color: #fff8f8 !important;
+        color: #ff69b4 !important;
+      }
+
+      body {
+        background-color: #ffeef8;
+        margin: 0;
+        padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+      // Initialize map at Harvard's campus
+      const map = L.map('map').setView([42.3736, -71.1097], 16);
+
+      // Add CartoDB's Positron tile layer (clean, minimalistic look)
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+      }).addTo(map);
+
+      // Custom mouse icon
+      const mouseIcon = L.divIcon({
+        html: '🐁',
+        className: 'mouse-icon',
+        iconSize: [25, 25]
+      });
+
+      // Click to add marker with custom icon
+      map.on('click', function (e) {
+        const latlng = e.latlng;
+        const marker = L.marker([latlng.lat, latlng.lng], {icon: mouseIcon}).addTo(map);
+        
+        // Random cute messages
+        const messages = [
+          "Eek! A mouse was here! 🐁",
+          "Squeaky friend spotted! 🧀",
+          "Mouse sighting! So cute! ✨",
+          "A tiny visitor appeared! 🐁",
+          "Mouse on the loose! 🎀"
+        ];
+        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+        
+        marker.bindPopup(randomMessage).openPopup();
+      });
+    </script>
+  </body>
+</html>
