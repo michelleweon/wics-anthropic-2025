@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
 
 const HeaderContainer = styled.header`
   display: flex;
@@ -34,15 +35,22 @@ const NavLink = styled.a`
 `;
 
 const Header = () => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Add logout logic here
+    navigate('/login');
+  };
+
   return (
     <HeaderContainer>
-      <Logo>
+      <Logo onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
         🐁 MouseMap
       </Logo>
       <Nav>
-        <NavLink href="#">Profile</NavLink>
+        <NavLink onClick={() => navigate('/profile')} href="#">Profile</NavLink>
         <NavLink href="#">Leaderboard</NavLink>
-        <NavLink href="#">Log Out</NavLink>
+        <NavLink onClick={handleLogout} href="#">Log Out</NavLink>
       </Nav>
     </HeaderContainer>
   );
