@@ -1,6 +1,7 @@
 import styled from 'styled-components';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 const LoginContainer = styled.div`
   height: 100vh;
@@ -69,17 +70,71 @@ const SignUpLink = styled.p`
   }
 `;
 
+const ErrorMessage = styled.div`
+  color: red;
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+`;
+
 const Login = () => {
   const navigate = useNavigate();
   const [credentials, setCredentials] = useState({
     email: '',
     password: ''
   });
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Add authentication logic here
-    navigate('/'); // Navigate to main page after successful login
+    setError(null);
+    setLoading(true);
+
+    try {
+      // First, try to sign in with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+
+      if (authError) {
+        throw authError;
+      }
+
+      if (!authData?.user) {
+        throw new Error('No user data returned');
+      }
+
+      // Then, fetch the user's profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profile')
+        .select('*')
+        .eq('username', authData.user.id)
+        .single();
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      // If we get here, both auth and profile were successful
+      navigate('/');
+    } catch (err) {
+      console.error('Login error:', err);
+      if (err instanceof Error) {
+        if (err.message.includes('Invalid login credentials')) {
+          setError('Invalid email or password');
+        } else if (err.message.includes('Email not confirmed')) {
+          setError('Please confirm your email before logging in');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('An error occurred during login');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -101,7 +156,10 @@ const Login = () => {
             onChange={(e) => setCredentials({...credentials, password: e.target.value})}
             required
           />
-          <Button type="submit">Login</Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
+          </Button>
+          {error && <ErrorMessage>{error}</ErrorMessage>}
         </Form>
         <SignUpLink>
           Don't have an account? <a href="/signup">Sign up</a>
@@ -111,4 +169,4 @@ const Login = () => {
   );
 };
 
-export default Login; 
+export default Login;

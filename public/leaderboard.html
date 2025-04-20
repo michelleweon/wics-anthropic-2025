@@ -34,7 +34,7 @@
         .nav-link {
             color: #ff9f1c;
             text-decoration: none;
-            font-weight: 600;
+            font-weight: normal;
             cursor: pointer;
         }
         .nav-link:hover {
@@ -124,10 +124,10 @@
         <table id="leaderboard">
             <thead>
                 <tr>
+                    <th>Rank</th>
                     <th>ID</th>
                     <th>Username</th>
                     <th>Name</th>
-                    <th>Rank</th>
                 </tr>
             </thead>
             <tbody id="leaderboard-body">
@@ -160,10 +160,10 @@
                     const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
                     
                     row.innerHTML = `
+                        <td><div class="rank-circle ${rankClass}">${rank}</div></td>
                         <td>${user.id}</td>
                         <td>${user.username}</td>
                         <td>${user.name}</td>
-                        <td><div class="rank-circle ${rankClass}">${rank}</div></td>
                     `;
                     tbody.appendChild(row);
                 });

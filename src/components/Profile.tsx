@@ -1,6 +1,7 @@
 import styled from 'styled-components';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 const ProfileContainer = styled.div`
   min-height: 100vh;
@@ -124,25 +125,135 @@ const Button = styled.button<{ variant?: 'delete' }>`
   `}
 `;
 
+const ErrorMessage = styled.div`
+  color: red;
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+`;
+
 const Profile = () => {
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState({
-    displayName: 'Mouse Spotter',
-    email: 'student@harvard.edu',
-    house: 'Kirkland House',
+    name: '',
+    username: '',
     password: ''
   });
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          navigate('/login');
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profile')
+          .select('*')
+          .eq('username', user.id)
+          .single();
+
+        if (profileError) {
+          throw profileError;
+        }
+
+        if (profile) {
+          setProfileData({
+            name: profile.name || '',
+            username: profile.username || '',
+            password: '' // Don't show the password
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+        setError('Failed to load profile data');
+      }
+    };
+
+    fetchProfile();
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Add profile update logic here
-    alert('Profile updated successfully!');
+    setError(null);
+    setLoading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('profile')
+        .update({
+          name: profileData.name
+        })
+        .eq('username', user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // If password is provided, update it
+      if (profileData.password) {
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: profileData.password
+        });
+
+        if (passwordError) {
+          throw passwordError;
+        }
+      }
+
+      setError('Profile updated successfully!');
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteAccount = () => {
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      // Add delete account logic here
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      // Delete profile
+      const { error: profileError } = await supabase
+        .from('profile')
+        .delete()
+        .eq('username', user.id);
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      // Delete auth user
+      const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
+      if (authError) {
+        throw authError;
+      }
+
+      // Sign out and redirect to login
+      await supabase.auth.signOut();
       navigate('/login');
+    } catch (err) {
+      console.error('Error deleting account:', err);
+      setError('Failed to delete account. Please try again.');
     }
   };
 
@@ -156,43 +267,22 @@ const Profile = () => {
             <Label>Display Name</Label>
             <Input
               type="text"
-              value={profileData.displayName}
-              onChange={(e) => setProfileData({...profileData, displayName: e.target.value})}
+              value={profileData.name}
+              onChange={(e) => setProfileData({...profileData, name: e.target.value})}
             />
           </FormGroup>
 
           <FormGroup>
-            <Label>Harvard Email</Label>
+            <Label>Username</Label>
             <Input
-              type="email"
-              value={profileData.email}
-              onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+              type="text"
+              value={profileData.username}
+              disabled
             />
           </FormGroup>
 
           <FormGroup>
-            <Label>House</Label>
-            <Select
-              value={profileData.house}
-              onChange={(e) => setProfileData({...profileData, house: e.target.value})}
-            >
-              <option value="Adams House">Adams House</option>
-              <option value="Cabot House">Cabot House</option>
-              <option value="Currier House">Currier House</option>
-              <option value="Dunster House">Dunster House</option>
-              <option value="Eliot House">Eliot House</option>
-              <option value="Kirkland House">Kirkland House</option>
-              <option value="Leverett House">Leverett House</option>
-              <option value="Lowell House">Lowell House</option>
-              <option value="Mather House">Mather House</option>
-              <option value="Pforzheimer House">Pforzheimer House</option>
-              <option value="Quincy House">Quincy House</option>
-              <option value="Winthrop House">Winthrop House</option>
-            </Select>
-          </FormGroup>
-
-          <FormGroup>
-            <Label>Reset Password</Label>
+            <Label>New Password</Label>
             <Input
               type="password"
               placeholder="Leave blank to keep current password"
@@ -202,11 +292,14 @@ const Profile = () => {
           </FormGroup>
 
           <ButtonContainer>
-            <Button type="submit">Save Changes</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saving...' : 'Save Changes'}
+            </Button>
             <Button type="button" variant="delete" onClick={handleDeleteAccount}>
               Delete Account
             </Button>
           </ButtonContainer>
+          {error && <ErrorMessage>{error}</ErrorMessage>}
         </Form>
       </ProfileCard>
     </ProfileContainer>
