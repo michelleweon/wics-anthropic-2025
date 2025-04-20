@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import styled from 'styled-components';
+import { supabase } from '../supabaseClient';
 
 const MapContainer = styled.div`
   height: calc(100vh - 100px); // Adjust height to account for header
@@ -11,7 +12,7 @@ const MapContainer = styled.div`
 
 interface MapProps {
   selectedMouse?: string;
-  isReportingMode: boolean;
+  isReportingMode?: boolean;
 }
 
 const Map: React.FC<MapProps> = ({ selectedMouse = '🐁', isReportingMode = false }) => {
@@ -24,6 +25,31 @@ const Map: React.FC<MapProps> = ({ selectedMouse = '🐁', isReportingMode = fal
     "A tiny visitor appeared! 🐁",
     "Mouse on the loose! 🎀"
   ];
+
+  const saveSighting = async (lat: number, lng: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('No user logged in');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('sightings')
+        .insert([
+          {
+            user_id: user.id,
+            latitude: lat,
+            longitude: lng,
+            description: cuteMessages[Math.floor(Math.random() * cuteMessages.length)]
+          }
+        ]);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving sighting:', error);
+    }
+  };
 
   useEffect(() => {
     if (!mapRef.current) {
@@ -45,12 +71,15 @@ const Map: React.FC<MapProps> = ({ selectedMouse = '🐁', isReportingMode = fal
       });
 
       // Click handler
-      map.on('click', (e: L.LeafletMouseEvent) => {
+      map.on('click', async (e: L.LeafletMouseEvent) => {
         if (!isReportingMode) return;
         
         const marker = L.marker([e.latlng.lat, e.latlng.lng], { icon: mouseIcon }).addTo(map);
         const randomMessage = cuteMessages[Math.floor(Math.random() * cuteMessages.length)];
         marker.bindPopup(randomMessage).openPopup();
+        
+        // Save the sighting to Supabase
+        await saveSighting(e.latlng.lat, e.latlng.lng);
       });
 
       mapRef.current = map;

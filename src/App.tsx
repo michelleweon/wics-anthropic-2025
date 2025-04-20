@@ -7,6 +7,7 @@ import LatestSightings from './components/LatestSightings';
 import Login from './components/Login';
 import SignUp from './components/SignUp';
 import Profile from './components/Profile';
+import Leaderboard from './components/Leaderboard';
 import { GlobalStyles } from './styles/GlobalStyles';
 import { useState } from 'react';
 
@@ -51,6 +52,12 @@ function App() {
             <Profile />
           </>
         } />
+        <Route path="/leaderboard" element={
+          <>
+            <Header />
+            <Leaderboard />
+          </>
+        } />
         <Route
           path="/"
           element={
@@ -74,7 +81,7 @@ function App() {
             </AppContainer>
           }
         />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

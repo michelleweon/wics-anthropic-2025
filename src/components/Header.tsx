@@ -49,7 +49,7 @@ const Header = () => {
       </Logo>
       <Nav>
         <NavLink onClick={() => navigate('/profile')} href="#">Profile</NavLink>
-        <NavLink href="#">Leaderboard</NavLink>
+        <NavLink href="/leaderboard.html">Leaderboard</NavLink>
         <NavLink onClick={handleLogout} href="#">Log Out</NavLink>
       </Nav>
     </HeaderContainer>

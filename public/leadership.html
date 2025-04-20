@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leadership Board</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #fff8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background-color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff9f1c;
+            cursor: pointer;
+        }
+        .nav {
+            display: flex;
+            gap: 20px;
+        }
+        .nav-link {
+            color: #ff9f1c;
+            text-decoration: none;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        .nav-link:hover {
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #ff9f1c;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th {
+            background-color: #fff8f8;
+            color: #ff9f1c;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ffe5d9;
+        }
+        tr:nth-child(even) {
+            background-color: #fff8f8;
+        }
+        .loading {
+            text-align: center;
+            color: #ff9f1c;
+            font-size: 1.2rem;
+        }
+        .error {
+            text-align: center;
+            color: red;
+            font-size: 1.2rem;
+        }
+        .rank-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin: 0 auto;
+        }
+        .rank-1 {
+            background-color: #FFD700;
+        }
+        .rank-2 {
+            background-color: #C0C0C0;
+        }
+        .rank-3 {
+            background-color: #CD7F32;
+        }
+        .rank-other {
+            background-color: #ff9f1c;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo" onclick="window.location.href='/'">🐁 MouseMap</div>
+        <div class="nav">
+            <a class="nav-link" href="/profile">Profile</a>
+            <a class="nav-link" href="/">Map</a>
+            <a class="nav-link" href="/login">Log Out</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>🏆 Leadership Board</h1>
+        <div id="loading" class="loading">Loading data...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        <table id="leaderboard">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://daltymobbfjbfqgjaetq.supabase.co';
+        const supabaseKey = 'YOUR_PUBLIC_ANON_KEY'; // Replace with your actual anon key
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Function to fetch and display data
+        async function fetchLeaderboardData() {
+            try {
+                const { data, error } = await supabase
+                    .from('profile')
+                    .select('id, username, name')
+                    .order('id', { ascending: true });
+
+                if (error) throw error;
+
+                const tbody = document.getElementById('leaderboard-body');
+                tbody.innerHTML = ''; // Clear existing data
+
+                data.forEach((user, index) => {
+                    const row = document.createElement('tr');
+                    const rank = index + 1;
+                    const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
+                    
+                    row.innerHTML = `
+                        <td><div class="rank-circle ${rankClass}">${rank}</div></td>
+                        <td>${user.id}</td>
+                        <td>${user.username}</td>
+                        <td>${user.name}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                // Hide loading message
+                document.getElementById('loading').style.display = 'none';
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'Error loading data. Please try again later.';
+            }
+        }
+
+        // Fetch data when page loads
+        document.addEventListener('DOMContentLoaded', fetchLeaderboardData);
+    </script>
+</body>
+</html> 
