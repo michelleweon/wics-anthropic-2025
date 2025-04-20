@@ -1,15 +1,11 @@
 import styled from 'styled-components';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
 const LeaderboardContainer = styled.div`
-  background-color: white;
-  padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  width: 100%;
+  padding: 2rem;
   max-width: 800px;
-  margin: 20px auto;
+  margin: 0 auto;
 `;
 
 const Title = styled.h1`
@@ -21,14 +17,15 @@ const Title = styled.h1`
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 `;
 
-const TableHeader = styled.th`
-  padding: 12px;
-  text-align: left;
-  background-color: #fff8f8;
-  color: #ff9f1c;
-  font-weight: bold;
+const TableHeader = styled.thead`
+  background-color: #ff9f1c;
+  color: white;
 `;
 
 const TableRow = styled.tr`
@@ -37,25 +34,32 @@ const TableRow = styled.tr`
   }
 `;
 
+const TableHeaderCell = styled.th`
+  padding: 1rem;
+  text-align: left;
+`;
+
 const TableCell = styled.td`
-  padding: 12px;
-  border-bottom: 1px solid #ffe5d9;
+  padding: 1rem;
+  border-bottom: 1px solid #ddd;
 `;
 
-const RankCell = styled(TableCell)`
-  font-weight: bold;
-  color: #ff9f1c;
+const LoadingMessage = styled.div`
+  text-align: center;
+  padding: 2rem;
+  color: #666;
 `;
 
-interface UserData {
-  id: string;
-  display_name: string;
-  house: string;
-  sightings_count: number;
-}
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 2rem;
+  color: red;
+`;
 
-interface LeaderboardEntry extends UserData {
+interface LeaderboardEntry {
   rank: number;
+  house: string;
+  sightings: number;
 }
 
 const Leaderboard = () => {
@@ -66,22 +70,72 @@ const Leaderboard = () => {
   useEffect(() => {
     const fetchLeaderboardData = async () => {
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('id, display_name, house, sightings_count')
-          .order('sightings_count', { ascending: false })
-          .limit(10);
+        console.log('Starting to fetch leaderboard data...');
+        
+        // Test connection first
+        const { data: testData, error: testError } = await supabase
+          .from('mice')
+          .select('count')
+          .limit(1);
 
-        if (error) throw error;
+        if (testError) {
+          throw new Error(`Database connection error: ${testError.message}`);
+        }
 
-        const rankedData = (data as UserData[]).map((entry, index) => ({
-          ...entry,
-          rank: index + 1
-        }));
+        console.log('Database connection successful');
+        
+        // Get all mice data
+        const { data: miceData, error: miceError } = await supabase
+          .from('mice')
+          .select('house')
+          .order('house');
 
+        if (miceError) {
+          throw new Error(`Error fetching data: ${miceError.message}`);
+        }
+
+        console.log('Raw mice data:', miceData);
+
+        if (!miceData || miceData.length === 0) {
+          console.log('No mice data found');
+          setError('No rat sightings found yet');
+          setLoading(false);
+          return;
+        }
+
+        // Count sightings per house
+        const houseCounts: Record<string, number> = {};
+        miceData.forEach(mouse => {
+          if (mouse.house) { // Only count if house exists
+            houseCounts[mouse.house] = (houseCounts[mouse.house] || 0) + 1;
+          }
+        });
+
+        console.log('House counts:', houseCounts);
+
+        // Convert to array and sort
+        const rankedData = Object.entries(houseCounts)
+          .map(([house, count]) => ({ house, count }))
+          .sort((a, b) => b.count - a.count)
+          .map((item, index) => ({
+            rank: index + 1,
+            house: item.house,
+            sightings: item.count
+          }));
+
+        console.log('Final ranked data:', rankedData);
         setLeaderboardData(rankedData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+      } catch (error) {
+        console.error('Detailed error:', error);
+        if (error instanceof Error) {
+          if (error.message.includes('Failed to fetch')) {
+            setError('Cannot connect to the database. Please check your internet connection and try again.');
+          } else {
+            setError(error.message || 'Failed to load data');
+          }
+        } else {
+          setError('An unexpected error occurred');
+        }
       } finally {
         setLoading(false);
       }
@@ -90,28 +144,31 @@ const Leaderboard = () => {
     fetchLeaderboardData();
   }, []);
 
-  if (loading) return <div>Loading leaderboard...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) {
+    return <LoadingMessage>Loading leaderboard...</LoadingMessage>;
+  }
+
+  if (error) {
+    return <ErrorMessage>{error}</ErrorMessage>;
+  }
 
   return (
     <LeaderboardContainer>
-      <Title>🏆 Mouse Spotter Leaderboard</Title>
+      <Title>🐁 Rat Sightings Leaderboard</Title>
       <Table>
-        <thead>
-          <tr>
-            <TableHeader>Rank</TableHeader>
-            <TableHeader>Name</TableHeader>
-            <TableHeader>House</TableHeader>
-            <TableHeader>Sightings</TableHeader>
-          </tr>
-        </thead>
+        <TableHeader>
+          <TableRow>
+            <TableHeaderCell>Rank</TableHeaderCell>
+            <TableHeaderCell>House</TableHeaderCell>
+            <TableHeaderCell>Sightings</TableHeaderCell>
+          </TableRow>
+        </TableHeader>
         <tbody>
           {leaderboardData.map((entry) => (
-            <TableRow key={entry.id}>
-              <RankCell>#{entry.rank}</RankCell>
-              <TableCell>{entry.display_name}</TableCell>
+            <TableRow key={entry.house}>
+              <TableCell>{entry.rank}</TableCell>
               <TableCell>{entry.house}</TableCell>
-              <TableCell>{entry.sightings_count}</TableCell>
+              <TableCell>{entry.sightings}</TableCell>
             </TableRow>
           ))}
         </tbody>
@@ -120,4 +177,4 @@ const Leaderboard = () => {
   );
 };
 
-export default Leaderboard; 
+export default Leaderboard;
