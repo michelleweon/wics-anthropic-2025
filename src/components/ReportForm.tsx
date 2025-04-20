@@ -31,6 +31,23 @@ const ReportButton = styled.button<{ active: boolean }>`
   }
 `;
 
+const SubmitButton = styled.button`
+  width: 100%;
+  padding: 12px;
+  background-color: #ffe5d9;
+  color: #ff9f1c;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 15px;
+  transition: all 0.2s;
+  
+  &:hover {
+    background-color: #ffd5c2;
+  }
+`;
+
 const Select = styled.select`
   width: 100%;
   padding: 10px;
@@ -81,12 +98,14 @@ const Label = styled.label`
 interface ReportFormProps {
   onModeChange: (isReporting: boolean) => void;
   onMouseSelect: (mouseEmoji: string) => void;
+  onSubmit?: (data: { house: string; mouse: string }) => void;
 }
 
-const ReportForm: React.FC<ReportFormProps> = ({ onModeChange, onMouseSelect }) => {
+const ReportForm: React.FC<ReportFormProps> = ({ onModeChange, onMouseSelect, onSubmit }) => {
   const [isReporting, setIsReporting] = useState(false);
   const [selectedHouse, setSelectedHouse] = useState('');
   const [selectedMouse, setSelectedMouse] = useState('🐁');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const mouseOptions = ['🐁', '🐭', '🐀', '🐹', '🐾', '🧀', '🪤', '🕵️'];
 
@@ -101,6 +120,35 @@ const ReportForm: React.FC<ReportFormProps> = ({ onModeChange, onMouseSelect }) 
     onMouseSelect(mouse);
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedHouse) {
+      alert('Please select a house before submitting');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (onSubmit) {
+        await onSubmit({
+          house: selectedHouse,
+          mouse: selectedMouse
+        });
+      }
+      // Reset form
+      setIsReporting(false);
+      setSelectedHouse('');
+      setSelectedMouse('🐁');
+      onModeChange(false);
+    } catch (error) {
+      console.error('Error submitting sighting:', error);
+      alert('Failed to submit sighting. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <FormContainer>
       <Title>Report a Mouse! 🐭</Title>
@@ -113,11 +161,12 @@ const ReportForm: React.FC<ReportFormProps> = ({ onModeChange, onMouseSelect }) 
       </ReportButton>
 
       {isReporting && (
-        <>
+        <form onSubmit={handleSubmit}>
           <Label>Select House</Label>
           <Select 
             value={selectedHouse}
             onChange={(e) => setSelectedHouse(e.target.value)}
+            required
           >
             <option value="">Select a House</option>
             <option value="Adams House">Adams House</option>
@@ -141,12 +190,17 @@ const ReportForm: React.FC<ReportFormProps> = ({ onModeChange, onMouseSelect }) 
                 key={mouse}
                 selected={mouse === selectedMouse}
                 onClick={() => handleMouseSelect(mouse)}
+                type="button"
               >
                 {mouse}
               </MouseOption>
             ))}
           </MouseGrid>
-        </>
+
+          <SubmitButton type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Submitting...' : 'Submit Sighting 📢'}
+          </SubmitButton>
+        </form>
       )}
     </FormContainer>
   );

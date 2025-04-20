@@ -10,6 +10,7 @@ import Profile from './components/Profile';
 import Leaderboard from './components/Leaderboard';
 import { GlobalStyles } from './styles/GlobalStyles';
 import { useState } from 'react';
+import { supabase } from './supabaseClient';
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -39,6 +40,62 @@ const SideSection = styled.div`
 function App() {
   const [isReportingMode, setIsReportingMode] = useState(false);
   const [selectedMouse, setSelectedMouse] = useState('🐁');
+  const [mapKey, setMapKey] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const DEFAULT_USERNAME = "anonymous";
+
+  const handleLocationSelect = (lat: number, lng: number) => {
+    setSelectedLocation({ lat, lng });
+  };
+
+  const handleSubmit = async (data: { house: string; mouse: string }) => {
+    try {
+      setError(null);
+      
+      if (!selectedLocation) {
+        throw new Error('Please click on the map to select a location for the mouse');
+      }
+
+      console.log('Submitting mouse at:', selectedLocation.lat, selectedLocation.lng);
+
+      // Insert the mouse into Supabase
+      const { error: insertError } = await supabase
+        .from('mice')
+        .insert([
+          {
+            username: DEFAULT_USERNAME,
+            house: data.house,
+            mouse_emoji: data.mouse,
+            latitude: selectedLocation.lat,
+            longitude: selectedLocation.lng
+          }
+        ]);
+
+      if (insertError) {
+        console.error('Supabase insert error:', insertError);
+        // Show more specific error message
+        if (insertError.code === '42501') {
+          throw new Error('Permission denied. Please check Supabase permissions.');
+        } else if (insertError.code === '42P01') {
+          throw new Error('Table not found. Please create the mice table in Supabase.');
+        } else {
+          throw new Error(`Database error: ${insertError.message}`);
+        }
+      }
+
+      // Force map rerender by updating the key
+      setMapKey(prev => prev + 1);
+      setSelectedLocation(null);
+
+      // Reset reporting mode
+      setIsReportingMode(false);
+    } catch (error) {
+      console.error('Error handling submission:', error);
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+      throw error;
+    }
+  };
 
   return (
     <Router>
@@ -63,17 +120,32 @@ function App() {
           element={
             <AppContainer>
               <Header />
+              {error && (
+                <div style={{
+                  backgroundColor: '#ffebee',
+                  color: '#c62828',
+                  padding: '10px',
+                  margin: '10px',
+                  borderRadius: '5px',
+                  textAlign: 'center'
+                }}>
+                  {error}
+                </div>
+              )}
               <MainContent>
                 <MapSection>
                   <Map 
+                    key={mapKey}
                     isReportingMode={isReportingMode}
                     selectedMouse={selectedMouse}
+                    onLocationSelect={handleLocationSelect}
                   />
                 </MapSection>
                 <SideSection>
                   <ReportForm 
                     onModeChange={setIsReportingMode}
                     onMouseSelect={setSelectedMouse}
+                    onSubmit={handleSubmit}
                   />
                   <LatestSightings />
                 </SideSection>
