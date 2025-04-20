@@ -8,6 +8,7 @@ import Login from './components/Login';
 import SignUp from './components/SignUp';
 import Profile from './components/Profile';
 import { GlobalStyles } from './styles/GlobalStyles';
+import { useState } from 'react';
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -35,6 +36,9 @@ const SideSection = styled.div`
 `;
 
 function App() {
+  const [isReportingMode, setIsReportingMode] = useState(false);
+  const [selectedMouse, setSelectedMouse] = useState('🐁');
+
   return (
     <Router>
       <GlobalStyles />
@@ -54,10 +58,16 @@ function App() {
               <Header />
               <MainContent>
                 <MapSection>
-                  <Map />
+                  <Map 
+                    isReportingMode={isReportingMode}
+                    selectedMouse={selectedMouse}
+                  />
                 </MapSection>
                 <SideSection>
-                  <ReportForm />
+                  <ReportForm 
+                    onModeChange={setIsReportingMode}
+                    onMouseSelect={setSelectedMouse}
+                  />
                   <LatestSightings />
                 </SideSection>
               </MainContent>

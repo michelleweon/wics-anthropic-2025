@@ -9,7 +9,12 @@ const MapContainer = styled.div`
   border-radius: 20px;
 `;
 
-const Map: React.FC = () => {
+interface MapProps {
+  selectedMouse?: string;
+  isReportingMode: boolean;
+}
+
+const Map: React.FC<MapProps> = ({ selectedMouse = '🐁', isReportingMode = false }) => {
   const mapRef = useRef<L.Map | null>(null);
 
   const cuteMessages = [
@@ -34,13 +39,15 @@ const Map: React.FC = () => {
 
       // Custom mouse icon
       const mouseIcon = L.divIcon({
-        html: '🐁',
+        html: selectedMouse,
         className: 'mouse-icon',
         iconSize: [25, 25]
       });
 
       // Click handler
       map.on('click', (e: L.LeafletMouseEvent) => {
+        if (!isReportingMode) return;
+        
         const marker = L.marker([e.latlng.lat, e.latlng.lng], { icon: mouseIcon }).addTo(map);
         const randomMessage = cuteMessages[Math.floor(Math.random() * cuteMessages.length)];
         marker.bindPopup(randomMessage).openPopup();
@@ -55,7 +62,7 @@ const Map: React.FC = () => {
         mapRef.current = null;
       }
     };
-  }, []);
+  }, [selectedMouse, isReportingMode]);
 
   return <MapContainer id="map" />;
 };
